@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Promo Code 邮件生成器</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  *{box-sizing:border-box}
+  :root{--ink:#111827;--mut:#6b7280;--line:#e5e7eb;--accent:#4f46e5;}
+  html,body{margin:0;padding:0}
+  body{background:#f5f6f8;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+
+  header{padding:20px 28px 16px;border-bottom:1px solid var(--line);background:#fff;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  .brand{font-size:17px;font-weight:600;letter-spacing:.2px}
+  .sub{color:var(--mut);font-size:13px}
+
+  main{display:grid;grid-template-columns:344px minmax(0,1fr);gap:18px;padding:18px 28px 48px;max-width:1560px;margin:0 auto;align-items:start}
+  aside{display:flex;flex-direction:column;gap:14px;position:sticky;top:18px}
+  @media (max-width:1060px){
+    main{grid-template-columns:1fr;padding:14px}
+    aside{position:static}
+  }
+
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px 16px}
+  .card h2{font-size:12.5px;font-weight:600;margin:0 0 10px;color:#374151;letter-spacing:.3px}
+  label.fl{display:block;font-size:12px;color:var(--mut);margin:11px 0 4px}
+
+  input[type=text],textarea{width:100%;font:inherit;font-size:13px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:#fff;color:inherit;outline:none}
+  input[type=text]:focus,textarea:focus,.paste:focus{border-color:#c7cbf5;box-shadow:0 0 0 3px rgba(79,70,229,.08)}
+  textarea{resize:vertical;line-height:1.55}
+
+  .drop{display:block;border:1.5px dashed #d5d8de;border-radius:10px;padding:18px 12px;text-align:center;color:var(--mut);font-size:12.5px;cursor:pointer;background:#fafafa;transition:.15s}
+  .drop:hover,.drop.hover{border-color:var(--accent);background:#eef2ff;color:var(--accent)}
+  .or{font-size:12px;color:#9ca3af;text-align:center;margin:12px 0 8px;position:relative}
+  .or span{background:#fff;padding:0 8px;position:relative;z-index:1}
+  .or:before{content:'';position:absolute;left:0;right:0;top:50%;height:1px;background:var(--line)}
+
+  .row{display:flex;gap:8px;align-items:center}
+  .row > *{min-width:0}
+  .hint{font-size:11.5px;color:#9ca3af;line-height:1.6;margin:8px 0 0}
+  .hint b{color:#6b7280;font-weight:500}
+
+  button{font:inherit;font-size:13px;border-radius:8px;padding:7px 13px;cursor:pointer;border:1px solid var(--line);background:#fff;color:inherit;transition:.15s;white-space:nowrap}
+  button:hover{background:#f9fafb}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:500}
+  button.primary:hover{background:#4338ca}
+  button.small{padding:5px 10px;font-size:12px}
+  button:disabled{opacity:.45;cursor:not-allowed}
+
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{padding:6px 11px;border:1px solid var(--line);border-radius:999px;background:#fff;font-size:12.5px;cursor:pointer;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .chip:hover{border-color:#c7cbf5}
+  .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+
+  .stage{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;min-height:74vh}
+  .toolbar{display:flex;justify-content:space-between;align-items:center;padding:11px 16px;border-bottom:1px solid var(--line);gap:12px;flex-wrap:wrap}
+  .stageTitle{font-size:12.5px;font-weight:600;color:#374151}
+  .stageTitle small{font-weight:400;color:#9ca3af;margin-left:8px}
+  .actions{display:flex;gap:8px}
+  .paper{padding:32px 38px 70px;overflow:auto}
+  @media (max-width:700px){.paper{padding:20px 16px 50px}}
+
+  #mail{outline:none;min-height:420px;max-width:860px;font-family:DengXian,'PingFang SC','Microsoft YaHei',Arial,sans-serif;font-size:11pt;line-height:1.55;color:#000}
+  #mail table{border-collapse:collapse;margin:2px 0 6px;border-collapse:collapse}
+  #mail p{margin:0 0 9px}
+  .empty{color:#b6bcc6;font-size:13px;font-family:-apple-system,'PingFang SC',sans-serif;padding-top:6px}
+
+  #toast{position:fixed;left:50%;bottom:34px;transform:translate(-50%,14px);background:#111827;color:#fff;font-size:13px;padding:9px 18px;border-radius:999px;opacity:0;pointer-events:none;transition:.22s;z-index:99}
+  #toast.on{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">Promo Code 邮件生成器</div>
+  <div class="sub">Excel 一行 → 一封邮件正文 · 复制即发</div>
+</header>
+
+<main>
+  <aside>
+    <div class="card">
+      <h2>1 · 数据来源</h2>
+      <label class="drop" id="drop">
+        <input type="file" id="file" accept=".xlsx,.xls,.csv" hidden>
+        <span id="dropText">点击选 xlsx，或把文件拖进来</span>
+      </label>
+      <div class="or"><span>或</span></div>
+      <textarea id="pasteBox" class="paste" rows="4" placeholder="从 Excel 框选后 Ctrl+C，粘到这里（自动解析）"></textarea>
+      <div class="row" style="margin-top:10px">
+        <button class="small" id="btnClear">清空</button>
+        <span class="hint" id="parseHint" style="margin:0"></span>
+      </div>
+    </div>
+
+    <div class="card" id="cardRecords" hidden>
+      <h2>2 · 记录</h2>
+      <div id="chips" class="chips"></div>
+    </div>
+
+    <div class="card">
+      <h2>3 · 邮件文案</h2>
+      <label class="fl">称呼</label>
+      <input type="text" id="greeting" value="Hi Vanessa,">
+      <p class="hint" style="margin:5px 0 0">按币种自动带出对接人（SG / MY / ID），改一次会记住</p>
+      <label class="fl">首段</label>
+      <textarea id="intro" rows="3"></textarea>
+      <label class="fl">邮件主题</label>
+      <div class="row">
+        <input type="text" id="subject">
+        <button class="small" id="copySubject">复制</button>
+      </div>
+      <p class="hint">正文预览里的字<b>可以直接改</b>，复制出去的就是改后的版本；切换记录会按 Excel 重新生成。</p>
+    </div>
+  </aside>
+
+  <section class="stage">
+    <div class="toolbar">
+      <div class="stageTitle">邮件正文预览 <small>粘到 Outlook 正文即可</small></div>
+      <div class="actions">
+        <button class="ghost" id="copyText">纯文本</button>
+        <button class="primary" id="copyRich">复制正文（带格式）</button>
+      </div>
+    </div>
+    <div class="paper">
+      <div id="mail" contenteditable="true" spellcheck="false"></div>
+    </div>
+  </section>
+</main>
+
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+(function(){
+  'use strict';
+
+  /* ---------------- 基础工具 ---------------- */
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+  function toast(msg){
+    const t = $('#toast');
+    t.textContent = msg;
+    t.classList.add('on');
+    clearTimeout(t._h);
+    t._h = setTimeout(()=>t.classList.remove('on'), 2200);
+  }
+
+  /* ---------------- 字段识别 ---------------- */
+  function normKey(s){
+    return String(s == null ? '' : s).toLowerCase().trim().replace(/\s+/g,'').replace(/[_\-\.\/]/g,'');
+  }
+
+  const LBL = {
+    project:'project', campaign:'project',
+    couponid:'couponid', coupon:'couponid',
+    code:'code', promocode:'code',
+    playid:'playid',
+    curr:'currency', currency:'currency',
+    product:'product', productline:'product', eligibleproductline:'product',
+    start:'start', startdate:'start', releasedate:'start', begin:'start',
+    end:'end', enddate:'end', expiredate:'end', expire:'end',
+    costcenter:'costcenter', budgetcomesfrom:'costcenter', cc:'costcenter',
+    tag:'tag', metrics:'metrics',
+    type:'type', coupontype:'type',
+    discount:'discount', discountrate:'discount',
+    'discount%':'discpct', discountpct:'discpct', discountpercent:'discpct',
+    'discount$':'discamt', discountamount:'discamt', discountoff:'discamt',
+    minspend:'minspend', 'minspend$':'minspend', minspendamount:'minspend',
+    cap:'cap', 'cap$':'cap', capamount:'cap',
+    sku:'sku', eligiblesku:'sku',
+    usage:'usage', peruidusage:'usage', times:'usage',
+    payment:'payment', eligiblepayment:'payment',
+    device:'device',
+    new:'new', newuseronly:'new',
+    traveldate:'traveldate',
+    initialqty:'quota', quota:'quota', initialquantity:'quota',
+    budget:'budget', currentqty:'currentqty',
+    aidsid:'aidsid', aidsidlimit:'aidsid', aid:'aidsid'
+  };
+
+  // 已知但邮件里用不到的字段：识别到了也不输出
+  const IGNORED = new Set(['project','playid','tag','metrics','discount','traveldate','budget','currentqty','couponid']);
+
+  function classify(label){
+    const n = normKey(label);
+    if(!n) return null;
+    const m = n.match(/^(terms|term|name|desc|description)(.*)$/);
+    if(m && (m[2] || m[1].length > 4)){
+      const kind = m[1].charAt(0) === 't' ? 'term' : (m[1].charAt(0) === 'd' ? 'desc' : 'name');
+      return {kind:kind, tag:m[2]};
+    }
+    const key = LBL[n];
+    if(key) return {kind:'field', key:key};
+    if(n === 'name' || n === 'term' || n === 'terms' || n === 'desc' || n === 'description'){
+      return {kind:'term' === n || 'terms' === n ? 'term' : (n === 'name' ? 'name' : 'desc'), tag:''};
+    }
+    return null;
+  }
+
+  /* ---------------- 解析表格 ---------------- */
+  function toCells(row){
+    return Array.isArray(row) ? row.map(v => v == null ? '' : v) : [];
+  }
+
+  function parseRows(rawRows){
+    const rows = rawRows.map(toCells).filter(r => r.some(c => String(c).trim() !== ''));
+    if(!rows.length) return [];
+
+    // 竖排（字段名 | 值）判断
+    let hits = 0;
+    rows.forEach(r => { if(classify(r[0])) hits++; });
+    const vertical = hits >= 5 && hits >= rows.length * 0.55;
+
+    if(vertical){
+      const recs = [];
+      let cur = {};
+      const seen = new Set();
+      for(const r of rows){
+        const c = classify(r[0]);
+        if(!c) continue;
+        const k = c.kind === 'field' ? c.key : c.kind + '|' + (c.tag || '');
+        if(cur[k] !== undefined && Object.keys(cur).length > 1){
+          recs.push(cur); cur = {};
+        }
+        cur[k] = r[1] === undefined ? '' : r[1];
+      }
+      if(Object.keys(cur).length) recs.push(cur);
+      return recs;
+    }
+
+    // 横排（第一行是表头）
+    let headIdx = -1, best = 0;
+    rows.forEach((r,i) => {
+      const n = r.filter(c => classify(c)).length;
+      if(n > best){ best = n; headIdx = i; }
+    });
+    if(headIdx < 0 || best < 2) return [];
+    const heads = rows[headIdx];
+    const recs = [];
+    for(let i = headIdx + 1; i < rows.length; i++){
+      const r = rows[i];
+      const rec = {};
+      let filled = 0;
+      heads.forEach((h,j) => {
+        const c = classify(h);
+        if(!c) return;
+        const v = r[j] === undefined ? '' : r[j];
+        if(String(v).trim() !== '') filled++;
+        const k = c.kind === 'field' ? c.key : c.kind + '|' + (c.tag || '');
+        rec[k] = v;
+      });
+      if(filled) recs.push(rec);
+    }
+    return recs;
+  }
+
+  /* ---------------- 字段读取 ---------------- */
+  function S(rec, k){
+    const v = rec[k];
+    return v == null ? '' : String(v).trim();
+  }
+
+  const CURSYM = {MYR:'RM', IDR:'Rp', SGD:'S$', THB:'THB ', HKD:'HK$', TWD:'NT$', JPY:'JPY ', KRW:'KRW ',
+                  PHP:'PHP ', VND:'VND ', USD:'US$', EUR:'€', GBP:'£', CNY:'CNY ', AUD:'A$', MOP:'MOP '};
+
+  const MARKET = {MYR:'MY', IDR:'ID', THB:'TH', SGD:'SG', HKD:'HK', TWD:'TW', JPY:'JP', KRW:'KR',
+                  PHP:'PH', VND:'VN', USD:'US', EUR:'EU', CNY:'CN', AUD:'AU', GBP:'GB', MOP:'MO'};
+  const LOCAL  = {MY:'ms', ID:'id', TH:'th', SG:'en', HK:'zh', TW:'zh', JP:'ja', KR:'ko',
+                  PH:'en', VN:'vi', US:'en', EU:'en', CN:'zh', AU:'en', GB:'en', MO:'zh'};
+
+  // 各市场对接人（称呼按币种自动带出，改一次会记住）
+  const OWNER_DEFAULT = {
+    SG:'Hi Rui Zhi Ong,',
+    MY:'Hi Shirley Chia,',
+    ID:'Hi Vanessa Pryana,'
+  };
+  const OWNER_KEY = 'promoMailOwners';
+  let owners = Object.assign({}, OWNER_DEFAULT);
+  try{
+    const saved = JSON.parse(localStorage.getItem(OWNER_KEY) || '{}');
+    Object.keys(saved).forEach(k => { if(typeof saved[k] === 'string') owners[k] = saved[k]; });
+  }catch(e){}
+
+  function saveOwner(market, greeting){
+    if(!market) return;
+    owners[market] = greeting;
+    try{ localStorage.setItem(OWNER_KEY, JSON.stringify(owners)); }catch(e){}
+  }
+
+  function marketOf(rec){
+    return MARKET[S(rec,'currency').toUpperCase()] || '';
+  }
+
+  function greetingFor(rec){
+    return owners[marketOf(rec)] || 'Hi team,';
+  }
+
+  function pad2(n){ return String(n).padStart(2,'0'); }
+
+  function fmtDate(v, time){
+    if(v === '' || v == null) return '';
+    if(v instanceof Date && !isNaN(v)){
+      return `${v.getFullYear()}-${pad2(v.getMonth()+1)}-${pad2(v.getDate())} ${time}`;
+    }
+    if(typeof v === 'number' && isFinite(v)){
+      const d = new Date(Date.UTC(1899,11,30) + Math.round(v) * 86400000);
+      if(!isNaN(d)) return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth()+1)}-${pad2(d.getUTCDate())} ${time}`;
+    }
+    let s = String(v).trim();
+    // 已带时间就保留原时间
+    const t = s.match(/\s(\d{1,2}):(\d{2})/);
+    const tt = t ? `${pad2(t[1])}:${t[2]}` : time;
+    s = s.replace(/[ T]\d{1,2}:\d{2}.*$/,'').trim();
+    let m = s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+    if(m) return `${m[1]}-${pad2(m[2])}-${pad2(m[3])} ${tt}`;
+    m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+    if(m) return `${m[3]}-${pad2(m[1])}-${pad2(m[2])} ${tt}`;
+    m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2})$/);
+    if(m) return `20${m[3]}-${pad2(m[1])}-${pad2(m[2])} ${tt}`;
+    return s;
+  }
+
+  function num(v){
+    if(v === '' || v == null) return null;
+    const s = String(v).replace(/[^0-9.\-]/g,'');
+    if(s === '' || isNaN(Number(s))) return null;
+    return Number(s);
+  }
+
+  function prettyNum(n){
+    if(n === null) return '';
+    return Number.isInteger(n) ? String(n) : String(n);
+  }
+
+  function mechanism(rec){
+    const cur = S(rec,'currency').toUpperCase();
+    const sym = CURSYM[cur] || (cur ? cur + ' ' : '');
+    const amt = num(rec.discamt);
+    let pct = num(rec.discpct);
+    if(pct === null) pct = num(rec.discount);
+    if(pct !== null && pct > 0 && pct <= 1) pct = Math.round(pct * 10000) / 100;
+    const minS = num(rec.minspend);
+    const cap  = num(rec.cap);
+
+    const bits = [];
+    if(cap  !== null) bits.push(`Cap.Amount at ${sym}${prettyNum(cap)}`);
+    if(minS !== null) bits.push(`Min.Spend at ${sym}${prettyNum(minS)}`);
+    const tail = bits.length ? ` (${bits.join('; ')})` : '';
+
+    if(amt !== null && amt > 0) return `${sym}${prettyNum(amt)} OFF${tail}`;
+    if(pct !== null && pct > 0) return `${pct}% OFF${tail}`;
+    return '';
+  }
+
+  function yn(v){
+    const s = String(v == null ? '' : v).trim().toLowerCase();
+    if(['', 'none', 'null', 'false', '0', 'no', 'n'].includes(s)) return 'False';
+    return 'True';
+  }
+
+  function localeLabel(cur){
+    const m = MARKET[cur] || '';
+    if(!m) return '';
+    const local = LOCAL[m] || 'en';
+    return local === 'en' ? `en-${m}` : `${local}-${m}; en-${m}`;
+  }
+
+  /* ---------------- 语言列 ---------------- */
+  function langFromTag(tag){
+    const t = String(tag || '').toLowerCase();
+    if(!t) return null;
+    if(/^(zh|cn|tw|hk|chs|cht|sc|tc)/.test(t)) return 'zh';
+    if(/^en/.test(t)) return 'en';
+    if(/^(my|bm|ms)/.test(t)) return 'ms';
+    if(/^(id|in)/.test(t)) return 'id';
+    if(/^th/.test(t)) return 'th';
+    if(/^(ja|jp)/.test(t)) return 'ja';
+    if(/^(ko|kr)/.test(t)) return 'ko';
+    if(/^vi/.test(t)) return 'vi';
+    if(/^(ph|tl)/.test(t)) return 'en';
+    return null;
+  }
+
+  function detectLang(text){
+    const s = String(text || '');
+    if(/[一-鿿]/.test(s)) return 'zh';
+    if(/[฀-๿]/.test(s)) return 'th';
+    if(/[぀-ヿ]/.test(s)) return 'ja';
+    if(/[가-힯]/.test(s)) return 'ko';
+    if(/[ăâđêôơư]/i.test(s)) return 'vi';
+    const t = ' ' + s.toLowerCase() + ' ';
+    if(/\b(diskaun|perbelanjaan|tempoh|tersedia|boleh|pengguna|pesanan|silakan|aplikasi|tautan|hingga|kod|tidak|setiap|mendaftar|menggunakan|pihak ketiga|terpakai)\b/.test(t)) return 'ms';
+    if(/\b(diskon|potongan|syarat|pengguna|pesanan|aplikasi|tautan|berlaku|dapat|transaksi|minimal|maksimal)\b/.test(t)) return 'id';
+    return 'en';
+  }
+
+  function pickLang(tag, text){
+    return langFromTag(tag) || detectLang(text);
+  }
+
+  function langColumns(rec, cur){
+    const names = [], terms = [], descs = [];
+    Object.keys(rec).forEach(k => {
+      const i = k.indexOf('|');
+      if(i < 0) return;
+      const kind = k.slice(0, i), tag = k.slice(i + 1);
+      const text = S(rec, k);
+      if(!text) return;
+      const item = {tag:tag, text:text, lang:pickLang(tag, text)};
+      if(kind === 'name') names.push(item);
+      else if(kind === 'term') terms.push(item);
+      else if(kind === 'desc') descs.push(item);
+    });
+
+    const order = [];
+    [names, terms, descs].forEach(list => list.forEach(it => { if(order.indexOf(it.lang) < 0) order.push(it.lang); }));
+
+    const m = MARKET[cur] || '';
+    return order.map(lang => {
+      const n = names.find(x => x.lang === lang);
+      const t = terms.find(x => x.lang === lang);
+      const d = descs.find(x => x.lang === lang);
+      return {
+        lang:lang,
+        label: m ? `${lang}-${m}` : lang,
+        name: n ? n.text : '',
+        terms: t ? t.text : '',
+        desc: d ? d.text : ''
+      };
+    });
+  }
+
+  /* ---------------- 生成邮件 HTML ---------------- */
+  function basicRows(rec){
+    const cur = S(rec,'currency').toUpperCase();
+    const rows = [];
+    rows.push(['Promo code', S(rec,'code') || 'TBC', true]);
+    rows.push(['Coupon ID', S(rec,'couponid') || 'TBC', true]);
+    rows.push(['Eligible product line', S(rec,'product'), false]);
+    rows.push(['Budget comes from', S(rec,'costcenter'), true]);
+    rows.push(['Coupon type', S(rec,'type') || 'Public', false]);
+    rows.push(['Currency', cur, false]);
+    rows.push(['Locale', localeLabel(cur), false]);
+    rows.push(['Device', S(rec,'device') || 'app', false]);
+    rows.push(['Quota', S(rec,'quota'), true]);
+    rows.push(['Mechanism', mechanism(rec), true]);
+    rows.push(['Release date', fmtDate(rec.start, '00:00'), false]);
+    rows.push(['Expire date', fmtDate(rec.end, '23:59'), false]);
+    rows.push(['Eligible sku', S(rec,'sku') || 'all', false]);
+    rows.push(['Eligible payment', S(rec,'payment') || 'all', false]);
+    rows.push(['New user only', yn(rec.new), false]);
+    if(S(rec,'aidsid')) rows.push(['AIDSID limit', S(rec,'aidsid'), false]);
+    rows.push(['Per UID usage', S(rec,'usage') ? `max ${S(rec,'usage')} per uid` : 'max 1 per uid', false]);
+    return rows;
+  }
+
+  function basicTable(rows){
+    let h = '<table border="0" cellspacing="0" cellpadding="0" style="border-collapse:collapse;font-family:Tahoma,Arial,sans-serif;font-size:9pt;color:#000000;margin:2px 0 6px;">';
+    rows.forEach((r,i) => {
+      const head = i === 0;
+      const bg = head ? '#990000' : (i % 2 ? '#FFFFFF' : '#F6F8F9');
+      const bc = head ? '#730000' : '#DED0D0';
+      const fg = head ? '#FFFFFF' : '#000000';
+      const fw = (head || r[2]) ? 'bold' : 'normal';
+      const val = esc(r[1]) || '&nbsp;';
+      h += '<tr>'
+        + `<td style="border:1px solid ${bc};background:${bg};padding:2px 7px;color:${fg};white-space:nowrap;vertical-align:top;">${esc(r[0])}</td>`
+        + `<td style="border:1px solid ${bc};background:${bg};padding:2px 7px;color:${fg};font-weight:${fw};vertical-align:top;">${val}</td>`
+        + '</tr>';
+    });
+    return h + '</table>';
+  }
+
+  function langTable(cols){
+    const hasDesc = cols.some(c => c.desc);
+    const rows = [['优惠券名称','name'], ['优惠券使用条款','terms']];
+    if(hasDesc) rows.push(['优惠券描述（用于Foxpage）','desc']);
+
+    let h = '<table border="0" cellspacing="0" cellpadding="0" width="100%" style="border-collapse:collapse;width:100%;font-family:\'PingFang SC\',\'Microsoft YaHei\',Arial,sans-serif;font-size:10pt;color:#000000;margin:2px 0 6px;">';
+    h += '<tr><td style="border:1px solid #DEE0E3;background:#F2F3F5;padding:6px;width:132px;vertical-align:top;">&nbsp;</td>';
+    cols.forEach(c => {
+      h += `<td style="border:1px solid #DEE0E3;background:#F2F3F5;padding:6px;font-weight:bold;font-style:italic;vertical-align:top;min-width:190px;">${esc(c.label)}</td>`;
+    });
+    h += '</tr>';
+    rows.forEach(r => {
+      h += `<tr><td style="border:1px solid #DEE0E3;background:#F2F3F5;padding:6px;white-space:nowrap;vertical-align:top;">${r[0]}</td>`;
+      cols.forEach(c => {
+        h += `<td style="border:1px solid #DEE0E3;padding:6px;vertical-align:top;">${esc(c[r[1]]) || '&nbsp;'}</td>`;
+      });
+      h += '</tr>';
+    });
+    return h + '</table>';
+  }
+
+  function mailHtml(rec){
+    const cur = S(rec,'currency').toUpperCase();
+    const cols = langColumns(rec, cur);
+    const P = "margin:0 0 9px;font-family:DengXian,'PingFang SC','Microsoft YaHei',Arial,sans-serif;font-size:11pt;color:#000000;";
+    let h = '';
+    h += `<p style="${P}">${esc($('#greeting').value)}</p>`;
+    h += `<p style="${P}">${esc($('#intro').value)}</p>`;
+    h += `<p style="${P}">&nbsp;</p>`;
+    h += `<p style="${P}">- Basic Info</p>`;
+    h += basicTable(basicRows(rec));
+    h += `<p style="${P}">&nbsp;</p>`;
+    h += `<p style="${P}">- Multi-language Content</p>`;
+    if(cols.length){
+      h += langTable(cols);
+    } else {
+      h += `<p style="${P}color:#888888;">（Excel 里没有 name… / term… 列，未生成多语言表格）</p>`;
+    }
+    return h;
+  }
+
+  /* ---------------- 记录管理 ---------------- */
+  let records = [];
+  let cur = 0;
+
+  function chipLabel(rec, i){
+    const code = S(rec,'code');
+    const proj = S(rec,'project');
+    if(code && proj) return `${code} · ${proj}`;
+    return code || proj || `记录 ${i+1}`;
+  }
+
+  function applyGreeting(){
+    const rec = records[cur];
+    if(!rec) return;
+    $('#greeting').value = greetingFor(rec);
+  }
+
+  function selectRecord(i){
+    cur = i;
+    applyGreeting();
+    renderChips();
+    renderMail();
+  }
+
+  function renderChips(){
+    const box = $('#chips');
+    box.innerHTML = '';
+    records.forEach((rec,i) => {
+      const b = document.createElement('button');
+      b.className = 'chip' + (i === cur ? ' on' : '');
+      b.textContent = chipLabel(rec,i);
+      b.title = chipLabel(rec,i);
+      b.onclick = () => selectRecord(i);
+      box.appendChild(b);
+    });
+    $('#cardRecords').hidden = records.length < 2;
+  }
+
+  function renderMail(){
+    const mail = $('#mail');
+    const rec = records[cur];
+    if(!rec){
+      mail.innerHTML = '<div class="empty">上传 xlsx 或粘贴 Excel 内容后，这里会自动生成邮件正文。</div>';
+      return;
+    }
+    mail.innerHTML = mailHtml(rec);
+  }
+
+  function setRecords(list, note){
+    records = list || [];
+    cur = 0;
+    if(records.length){
+      const f = records[0];
+      const proj = S(f,'project');
+      $('#subject').value = proj ? `${proj} | Promo Code Creation` : 'Promo Code Creation';
+      if(!$('#intro').value.trim()){
+        $('#intro').value = proj
+          ? `We seek your help on the creation of ANT promo codes for ${proj} campaign. Thank you!`
+          : 'We seek your help on the creation of ANT promo codes for this campaign. Thank you!';
+      }
+      applyGreeting();
+    }
+    renderChips();
+    renderMail();
+    const hint = $('#parseHint');
+    hint.textContent = records.length
+      ? `已识别 ${records.length} 条记录`
+      : '';
+    if(note) hint.textContent = note;
+  }
+
+  /* ---------------- 输入：xlsx ---------------- */
+  function readFile(file){
+    const reader = new FileReader();
+    reader.onload = e => {
+      try{
+        if(typeof XLSX === 'undefined') throw new Error('xlsx 解析库没加载出来（可能没网），请改用粘贴方式');
+        const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+        let all = [];
+        wb.SheetNames.forEach(name => {
+          const ws = wb.Sheets[name];
+          if(!ws) return;
+          const rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:''});
+          all = all.concat(parseRows(rows));
+        });
+        if(!all.length) throw new Error('文件里没找到可识别的字段（Code / Curr. / Product …）');
+        setRecords(all);
+        $('#dropText').textContent = file.name;
+        toast(`已读取 ${all.length} 条记录`);
+      }catch(err){
+        $('#parseHint').textContent = err.message;
+        toast('读取失败');
+      }
+    };
+    reader.onerror = () => toast('文件读取失败');
+    reader.readAsArrayBuffer(file);
+  }
+
+  /* ---------------- 输入：粘贴 ---------------- */
+  let pasteTimer = null;
+  function parsePaste(){
+    const txt = $('#pasteBox').value;
+    if(!txt.trim()) { return; }
+    const rows = txt.replace(/\r/g,'').split('\n').map(line => line.split('\t'));
+    const list = parseRows(rows);
+    if(list.length){
+      setRecords(list);
+    } else {
+      $('#parseHint').textContent = '没识别出字段，检查一下第一列是不是 Code / Curr. / Product 这些字段名';
+    }
+  }
+
+  /* ---------------- 复制 ---------------- */
+  function mailWrapper(){
+    const inner = $('#mail').innerHTML;
+    return `<div style="font-family:DengXian,'PingFang SC','Microsoft YaHei',Arial,sans-serif;font-size:11pt;color:#000000;line-height:1.55;">${inner}</div>`;
+  }
+
+  function legacyCopy(){
+    const el = $('#mail');
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    let ok = false;
+    try{ ok = document.execCommand('copy'); }catch(e){}
+    sel.removeAllRanges();
+    toast(ok ? '已复制，直接粘到邮件正文' : '复制失败，请手动全选预览内容复制');
+  }
+
+  async function copyRich(){
+    if(!records.length){ toast('先生成内容'); return; }
+    const html = mailWrapper();
+    const text = $('#mail').innerText;
+    try{
+      if(navigator.clipboard && window.ClipboardItem){
+        await navigator.clipboard.write([new ClipboardItem({
+          'text/html': new Blob([html], {type:'text/html'}),
+          'text/plain': new Blob([text], {type:'text/plain'})
+        })]);
+        toast('已复制，直接粘到邮件正文');
+        return;
+      }
+      throw new Error('no api');
+    }catch(e){
+      legacyCopy();
+    }
+  }
+
+  async function copyPlain(){
+    if(!records.length){ toast('先生成内容'); return; }
+    try{
+      await navigator.clipboard.writeText($('#mail').innerText);
+      toast('纯文本已复制');
+    }catch(e){
+      const ta = document.createElement('textarea');
+      ta.value = $('#mail').innerText;
+      document.body.appendChild(ta);
+      ta.select();
+      try{ document.execCommand('copy'); toast('纯文本已复制'); }catch(_){ toast('复制失败'); }
+      ta.remove();
+    }
+  }
+
+  /* ---------------- 事件 ---------------- */
+  $('#file').addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0];
+    if(f) readFile(f);
+  });
+
+  const drop = $('#drop');
+  ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => {
+    e.preventDefault();
+    drop.classList.add('hover');
+  }));
+  ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => {
+    e.preventDefault();
+    drop.classList.remove('hover');
+  }));
+  drop.addEventListener('drop', e => {
+    const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if(f) readFile(f);
+  });
+
+  $('#pasteBox').addEventListener('input', () => {
+    clearTimeout(pasteTimer);
+    pasteTimer = setTimeout(parsePaste, 350);
+  });
+
+  $('#btnClear').addEventListener('click', () => {
+    $('#pasteBox').value = '';
+    $('#parseHint').textContent = '';
+    $('#dropText').textContent = '点击选 xlsx，或把文件拖进来';
+    records = []; cur = 0;
+    renderChips(); renderMail();
+  });
+
+  ['#greeting','#intro'].forEach(sel => {
+    $(sel).addEventListener('input', () => {
+      if(!records.length) return;
+      if(sel === '#greeting') saveOwner(marketOf(records[cur]), $('#greeting').value);
+      renderMail();
+    });
+  });
+
+  $('#copyRich').addEventListener('click', copyRich);
+  $('#copyText').addEventListener('click', copyPlain);
+  $('#copySubject').addEventListener('click', async () => {
+    const v = $('#subject').value;
+    if(!v){ toast('主题是空的'); return; }
+    try{ await navigator.clipboard.writeText(v); toast('主题已复制'); }
+    catch(e){ toast('复制失败'); }
+  });
+
+  document.addEventListener('keydown', e => {
+    if((e.metaKey || e.ctrlKey) && e.key === 'Enter'){ e.preventDefault(); copyRich(); }
+  });
+
+  // 供调试 / 自查
+  window.__promo = {parseRows:parseRows, setRecords:setRecords, renderMail:renderMail, basicRows:basicRows};
+
+  renderMail();
+})();
+</script>
+</body>
+</html>
